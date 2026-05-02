@@ -1,0 +1,137 @@
+{
+  "version": "3",
+  "CT_THRESHOLD": 60,
+  "RANDOM_STATE": 42,
+  "CURRENT_YEAR": 2026,
+  "CT_INITIAL_RETEST_DAYS": 14,
+  "TRAIN_SEASONS": [
+    2017,
+    2019,
+    2020,
+    2021
+  ],
+  "VAL_SEASONS": [
+    2022
+  ],
+  "TEST_SEASONS": [
+    2023,
+    2024
+  ],
+  "CORE_FEATURES": [
+    "WG_Current",
+    "CT_Initial",
+    "WG_Initial_7Day_Cnt",
+    "Moisture",
+    "Mechanical_Damage",
+    "Actual_Seed_Per_LB",
+    "rm",
+    "Stage",
+    "season_age",
+    "RR_Lateral_Strip_PCT",
+    "Cry1Ac_Bollgard_Strip_Test",
+    "Cry2Ab_Bollgard_Strip_Test"
+  ],
+  "CAT_FEATURES": [
+    "Origin_Region",
+    "Grower_Region"
+  ],
+  "WEATHER_FEATURES": [
+    "cumulated_dd60",
+    "avg_soil_moisture",
+    "dd_60",
+    "irrigation_type",
+    "maczone"
+  ],
+  "ENGINEERED_FEATURES": [
+    "season_age",
+    "irrigation_is_dryland",
+    "ct_distance_to_threshold",
+    "pp_day5_cum_dd60",
+    "pp_day10_cum_dd60",
+    "pp_day5_avg_soilmoisture",
+    "pp_day10_avg_soilmoisture",
+    "cumulated_soil_moisture",
+    "rm_band"
+  ],
+  "M1_FEATURES": [
+    "WG_Current",
+    "CT_Initial",
+    "WG_Initial_7Day_Cnt",
+    "Moisture",
+    "Mechanical_Damage",
+    "Actual_Seed_Per_LB",
+    "rm",
+    "Stage",
+    "season_age",
+    "RR_Lateral_Strip_PCT",
+    "Cry1Ac_Bollgard_Strip_Test",
+    "Cry2Ab_Bollgard_Strip_Test",
+    "cumulated_dd60",
+    "avg_soil_moisture",
+    "dd_60",
+    "irrigation_type",
+    "maczone",
+    "season_age",
+    "irrigation_is_dryland",
+    "ct_distance_to_threshold",
+    "pp_day5_cum_dd60",
+    "pp_day10_cum_dd60",
+    "pp_day5_avg_soilmoisture",
+    "pp_day10_avg_soilmoisture",
+    "cumulated_soil_moisture",
+    "rm_band"
+  ],
+  "M4_FEATURES": [
+    "Moisture",
+    "Mechanical_Damage",
+    "Actual_Seed_Per_LB",
+    "rm"
+  ],
+  "M4_CAT": [
+    "Origin_Region"
+  ],
+  "M5_FEATURES": [
+    "rm",
+    "cumulated_dd60",
+    "avg_soil_moisture",
+    "irrigation_is_dryland",
+    "season_age"
+  ],
+  "M5_CAT": [
+    "Origin_Region",
+    "irrigation_type"
+  ],
+  "rm_bands": [
+    "Ultra-Early",
+    "Early",
+    "Mid-Early",
+    "Mid-Full",
+    "Full"
+  ],
+  "SURVIVAL_FEATURES": [
+    "season_age",
+    "WG_Current",
+    "CT_Initial",
+    "Moisture",
+    "Mechanical_Damage",
+    "rm",
+    "Stage",
+    "cumulated_dd60",
+    "avg_soil_moisture",
+    "irrigation_type",
+    "ct_distance_to_threshold"
+  ],
+  "survival_event_col": "event",
+  "survival_duration_col": "duration",
+  "survival_time_unit": "growing_seasons",
+  "metrics": {
+    "m1_auc": 1.0,
+    "m1_pr_auc": 1.0,
+    "m2_rmse": 0.9153301135753898,
+    "m2_mae": 0.334683239224638,
+    "m2_r2": 0.9981572771467494,
+    "m3_f1_macro": 1.0,
+    "m4_auc": 0.6730254350736279,
+    "m6_c_index": 0.9413542943665433
+  }
+}
