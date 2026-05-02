@@ -28,7 +28,7 @@ with st.sidebar:
         <div style="font-family:'Space Mono',monospace;color:{COLORS['accent_green']};
                     font-size:1.1rem;font-weight:700">COTTON SEED QI</div>
         <div style="color:{COLORS['text_secondary']};font-size:0.75rem;margin-top:2px">
-            v3.0 | CLAUDE.md Compliant
+            v3.0
         </div>
     </div>
     """, unsafe_allow_html=True)

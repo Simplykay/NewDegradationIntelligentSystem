@@ -41,6 +41,3 @@ if irr:
     fig_irr.update_layout(title="Irrigation Type Breakdown (%)", xaxis_title="Type", yaxis_title="% Fields")
     st.plotly_chart(apply_theme(fig_irr), use_container_width=True)
 
-st.markdown("---")
-st.info("Full DD60 vs CT scatter and soil moisture correlation will appear once models are trained "
-        "and 2026 weather data joins the lineage dataset (join coverage shown in startup logs).")
