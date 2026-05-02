@@ -1,4 +1,4 @@
-import sys, os
+﻿import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import streamlit as st, pandas as pd
 from components.theme import inject_css, COLORS
@@ -22,12 +22,12 @@ if not stage_data:
     st.stop()
 
 df = pd.DataFrame(stage_data)
-st.plotly_chart(stage_line(stage_data), use_container_width=True)
+st.plotly_chart(stage_line(stage_data), width='stretch')
 
 st.markdown("---")
 st.subheader("Stage-by-Stage Summary")
 st.dataframe(df.sort_values("Stage").style.background_gradient(
-    subset=["degraded_pct"], cmap="RdYlGn_r"), use_container_width=True)
+    subset=["degraded_pct"], cmap="RdYlGn_r"), width='stretch')
 
 st.markdown("---")
 col1, col2 = st.columns(2)

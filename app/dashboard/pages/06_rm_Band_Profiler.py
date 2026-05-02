@@ -1,4 +1,4 @@
-import sys, os
+﻿import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import streamlit as st, pandas as pd
 from components.theme import inject_css, COLORS
@@ -37,13 +37,13 @@ with col1:
         else:
             st.info(f"No data for {band_label}")
         st.dataframe(df[["rm_band", "mean_ct", "degraded_pct", "lot_count"]]
-                     .sort_values("degraded_pct"), use_container_width=True)
+                     .sort_values("degraded_pct"), width='stretch')
 
 with col2:
     if rm_data:
         for d in rm_data:
             d["rm_band"] = d.get("rm_band", "")
-        st.plotly_chart(rm_radar_chart(rm_data), use_container_width=True)
+        st.plotly_chart(rm_radar_chart(rm_data), width='stretch')
 
 st.markdown("---")
 st.subheader("Cross-Band Comparison")
@@ -56,4 +56,4 @@ if rm_data:
                  text=df["degraded_pct"].apply(lambda x: f"{x:.1f}%"))
     fig.update_layout(title="Degradation % by rm Band", xaxis_title="rm Band",
                       yaxis_title="Degraded %")
-    st.plotly_chart(apply_theme(fig), use_container_width=True)
+    st.plotly_chart(apply_theme(fig), width='stretch')

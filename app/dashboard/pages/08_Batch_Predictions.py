@@ -1,4 +1,4 @@
-import sys, os
+﻿import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import streamlit as st, pandas as pd
 from components.theme import inject_css, COLORS
@@ -34,7 +34,7 @@ uploaded = st.file_uploader("Upload lots CSV", type=["csv"])
 if uploaded:
     df = pd.read_csv(uploaded)
     st.markdown(f"Uploaded: **{len(df):,} lots**")
-    st.dataframe(df.head(5), use_container_width=True)
+    st.dataframe(df.head(5), width='stretch')
 
     if st.button("Run Batch Predictions", type="primary"):
         with st.spinner("Scoring all lots..."):
@@ -50,9 +50,9 @@ if uploaded:
 
                 if "risk_level" in results.columns:
                     styled = results.style.applymap(risk_color, subset=["risk_level"])
-                    st.dataframe(styled, use_container_width=True)
+                    st.dataframe(styled, width='stretch')
                 else:
-                    st.dataframe(results, use_container_width=True)
+                    st.dataframe(results, width='stretch')
 
                 csv_out = results.to_csv(index=False).encode()
                 st.download_button("Download Predictions CSV", csv_out,

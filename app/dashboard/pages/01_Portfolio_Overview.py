@@ -1,4 +1,4 @@
-import sys, os
+﻿import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import streamlit as st
 from components.theme import inject_css, COLORS
@@ -37,14 +37,14 @@ with c4:
 st.markdown("---")
 col_l, col_r = st.columns([1, 1])
 with col_l:
-    st.plotly_chart(regional_bar(regional), use_container_width=True)
+    st.plotly_chart(regional_bar(regional), width='stretch')
 with col_r:
-    st.plotly_chart(stage_line(stage_data), use_container_width=True)
+    st.plotly_chart(stage_line(stage_data), width='stretch')
 
-st.plotly_chart(seasonal_trend_chart(seasonal), use_container_width=True)
+st.plotly_chart(seasonal_trend_chart(seasonal), width='stretch')
 
 with st.expander("Regional Detail Table"):
     import pandas as pd
     if regional:
         st.dataframe(pd.DataFrame(regional).sort_values("degraded_pct", ascending=False),
-                     use_container_width=True)
+                     width='stretch')

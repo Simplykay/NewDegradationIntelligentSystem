@@ -1,4 +1,4 @@
-import sys, os
+﻿import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import streamlit as st, pandas as pd
 from components.theme import inject_css, COLORS
@@ -29,7 +29,7 @@ with col3:
     metric_card("False-Pass Lots", f"{gap.get('false_pass_count', 0):,}",
                 delta=f"{gap.get('false_pass_pct', 0):.1f}% of tested lots", color=COLORS["accent_amber"])
 
-st.plotly_chart(ct_histogram(ct_data), use_container_width=True)
+st.plotly_chart(ct_histogram(ct_data), width='stretch')
 
 st.markdown("---")
 st.subheader("Vigor Gap: WG vs CT")
@@ -47,4 +47,4 @@ if physical:
     rows = []
     for col, stats in physical.items():
         rows.append({"Feature": col, **{k: round(v, 3) for k, v in stats.items()}})
-    st.dataframe(pd.DataFrame(rows), use_container_width=True)
+    st.dataframe(pd.DataFrame(rows), width='stretch')

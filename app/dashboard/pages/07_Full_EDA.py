@@ -1,4 +1,4 @@
-import sys, os
+﻿import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import streamlit as st, pandas as pd, plotly.graph_objects as go
 from components.theme import inject_css, apply_theme, COLORS
@@ -28,28 +28,28 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
 ])
 
 with tab1:
-    st.plotly_chart(ct_histogram(ct_data), use_container_width=True)
+    st.plotly_chart(ct_histogram(ct_data), width='stretch')
     cols = st.columns(3)
     cols[0].metric("Degraded (<60)", ct_data.get("degraded_count", 0))
     cols[1].metric("At Risk (60-80)", ct_data.get("at_risk_count", 0))
     cols[2].metric("High Quality (>80)", ct_data.get("high_quality_count", 0))
 
 with tab2:
-    st.plotly_chart(seasonal_trend_chart(seasonal), use_container_width=True)
+    st.plotly_chart(seasonal_trend_chart(seasonal), width='stretch')
     if seasonal:
-        st.dataframe(pd.DataFrame(seasonal), use_container_width=True)
+        st.dataframe(pd.DataFrame(seasonal), width='stretch')
 
 with tab3:
-    st.plotly_chart(regional_bar(regional), use_container_width=True)
+    st.plotly_chart(regional_bar(regional), width='stretch')
     if regional:
         st.dataframe(pd.DataFrame(regional).sort_values("degraded_pct", ascending=False),
-                     use_container_width=True)
+                     width='stretch')
 
 with tab4:
     if physical:
         rows = [{"Feature": col, **{k: round(v, 3) for k, v in stats.items()}}
                 for col, stats in physical.items()]
-        st.dataframe(pd.DataFrame(rows), use_container_width=True)
+        st.dataframe(pd.DataFrame(rows), width='stretch')
     else:
         st.info("Physical quality stats not available.")
 
@@ -64,7 +64,7 @@ with tab5:
             texttemplate="%{text}",
         ))
         fig.update_layout(title="Feature Correlation Matrix")
-        st.plotly_chart(apply_theme(fig), use_container_width=True)
+        st.plotly_chart(apply_theme(fig), width='stretch')
     else:
         st.info("Correlation matrix not available.")
 

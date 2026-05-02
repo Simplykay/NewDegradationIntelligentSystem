@@ -1,4 +1,4 @@
-import sys, os
+﻿import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import streamlit as st, pandas as pd, plotly.express as px
 from components.theme import inject_css, COLORS, apply_theme
@@ -39,5 +39,5 @@ if irr:
         text=[f"{p:.1f}%" for p in df_irr["pct"]], textposition="outside",
     ))
     fig_irr.update_layout(title="Irrigation Type Breakdown (%)", xaxis_title="Type", yaxis_title="% Fields")
-    st.plotly_chart(apply_theme(fig_irr), use_container_width=True)
+    st.plotly_chart(apply_theme(fig_irr), width='stretch')
 

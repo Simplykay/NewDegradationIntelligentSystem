@@ -1,4 +1,4 @@
-"""Page 04 — Shelf-Life Predictor (M6 Hero Page)."""
+﻿"""Page 04 — Shelf-Life Predictor (M6 Hero Page)."""
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import streamlit as st, pandas as pd
@@ -33,7 +33,7 @@ with col_input:
     dd60     = st.number_input("Cumulated DD60 (heat units)", 0.0, 6000.0, 1500.0, key="dd60_04")
     sm       = st.number_input("Avg Soil Moisture (0-1)", 0.0, 1.0, 0.4, step=0.01, key="sm_04")
 
-    predict_btn = st.button("PREDICT SHELF-LIFE", type="primary", use_container_width=True)
+    predict_btn = st.button("PREDICT SHELF-LIFE", type="primary", width='stretch')
 
 with col_output:
     if predict_btn:
@@ -82,7 +82,7 @@ with col_output:
             km = client.survival_km_overall()
             if km:
                 st.plotly_chart(survival_curve(km, "Portfolio Survival Curve (all lots)"),
-                                use_container_width=True)
+                                width='stretch')
         except Exception:
             pass
 
@@ -95,7 +95,7 @@ with tab1:
         km_r = client.survival_km_by_region()
         if km_r:
             st.plotly_chart(multi_survival_curves(km_r, "Survival by Origin Region"),
-                            use_container_width=True)
+                            width='stretch')
     except Exception as e:
         st.warning(f"KM by region unavailable: {e}")
 
@@ -104,7 +104,7 @@ with tab2:
         km_s = client.survival_km_by_stage()
         if km_s:
             st.plotly_chart(multi_survival_curves(km_s, "Survival by Pipeline Stage"),
-                            use_container_width=True)
+                            width='stretch')
     except Exception as e:
         st.warning(f"KM by stage unavailable: {e}")
 
@@ -113,7 +113,7 @@ with tab3:
         km_b = client.survival_km_by_rm_band()
         if km_b:
             st.plotly_chart(multi_survival_curves(km_b, "Survival by rm Band"),
-                            use_container_width=True)
+                            width='stretch')
     except Exception as e:
         st.warning(f"KM by rm band unavailable: {e}")
 
@@ -121,7 +121,7 @@ with tab4:
     try:
         hr = client.survival_cox_hazard_ratios()
         if hr:
-            st.plotly_chart(forest_plot(hr), use_container_width=True)
-            st.dataframe(pd.DataFrame(hr), use_container_width=True)
+            st.plotly_chart(forest_plot(hr), width='stretch')
+            st.dataframe(pd.DataFrame(hr), width='stretch')
     except Exception as e:
         st.warning(f"Cox hazard ratios unavailable: {e}")
