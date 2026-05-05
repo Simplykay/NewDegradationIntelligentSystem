@@ -1,6 +1,6 @@
 """
 Cotton Seed Quality Intelligence System — Model Training Script
-CLAUDE.md v3: lineage + 2026_cotton_with_weather only; rm replaces Variety; M6 is primary.
+CLAUDE.md v5: lineage + cotton_weather_features.xlsx only; rm replaces Variety; M6 is primary.
 Run: python train_models.py
 """
 import os, json, pickle, warnings, re
@@ -39,38 +39,46 @@ VAL_SEASONS   = [2022]
 TEST_SEASONS  = [2023, 2024]
 HOLDOUT       = [2025]
 
-# rm values are encoded as 2-digit suffix of variety number (e.g. DP1646 → rm=46)
-# Scale 0-99 maps to CLAUDE.md maturity bands via var_bin groupings in weather data
 RM_BANDS = {
-    "Ultra-Early": (0,  20),
-    "Early":       (20, 30),
-    "Mid-Early":   (30, 40),
-    "Mid-Full":    (40, 50),
-    "Full":        (50, 100),
+    "Ultra-Early": (0,   100),
+    "Early":       (100, 110),
+    "Mid-Early":   (110, 120),
+    "Mid-Full":    (120, 130),
+    "Full":        (130, 999),
 }
 
 CORE_FEATURES = [
-    "WG_Current", "CT_Initial", "WG_Initial_7Day_Cnt", "Moisture",
-    "Mechanical_Damage", "Actual_Seed_Per_LB", "rm",
+    # WG_Current REMOVED — not available at prediction time
+    # WG_Initial_7Day_Cnt REMOVED — not available at prediction time
+    "CT_Initial", "Moisture", "Mechanical_Damage", "Actual_Seed_Per_LB", "rm",
     "Stage", "season_age",
     "RR_Lateral_Strip_PCT", "Cry1Ac_Bollgard_Strip_Test", "Cry2Ab_Bollgard_Strip_Test",
 ]
 CAT_FEATURES = ["Origin_Region", "Grower_Region"]
 
 WEATHER_FEATURES = [
-    "cumulated_dd60", "avg_soil_moisture", "dd_60",
-    "irrigation_type", "maczone",
+    # Core thermal / moisture
+    "cumulated_dd60", "avg_soil_moisture", "dd_60", "irrigation_type", "maczone",
+    # Full-season environmental signals
+    "total_precipitation", "total_solar_radiation", "season_heat_stress_days", "season_avg_vpd",
+    # Post-planting 14-day window (pre-engineered in xlsx)
+    "pp14_cum_dd60", "pp14_total_precip",
+    # Boll fill period
+    "boll_fill_cum_dd60", "boll_fill_total_precip", "boll_fill_heat_stress_days",
+    # Pre-harvest 30 days
+    "pre_harvest30_cum_dd60", "pre_harvest30_total_precip",
+    # Post-defoliation period
+    "post_defol_cumulated_dd60", "post_defol_avg_soilmoisture", "post_defol_total_precip",
 ]
 
 ENGINEERED_FEATURES = [
     "season_age", "irrigation_is_dryland", "ct_distance_to_threshold",
-    "pp_day5_cum_dd60", "pp_day10_cum_dd60",
-    "pp_day5_avg_soilmoisture", "pp_day10_avg_soilmoisture",
     "cumulated_soil_moisture", "rm_band",
+    # pp14_cum_dd60 / pp14_total_precip come pre-engineered from cotton_weather_features.xlsx
 ]
 
-M1_FEATURES = CORE_FEATURES + WEATHER_FEATURES + ENGINEERED_FEATURES
-M4_FEATURES = ["Moisture", "Mechanical_Damage", "Actual_Seed_Per_LB", "rm"]
+M1_FEATURES = list(dict.fromkeys(CORE_FEATURES + WEATHER_FEATURES + ENGINEERED_FEATURES))
+M4_FEATURES = ["Moisture", "Mechanical_Damage", "Actual_Seed_Per_LB", "rm", "CT_Initial"]
 M4_CAT      = ["Origin_Region"]
 M4_THRESHOLD = 0.40
 
@@ -80,13 +88,19 @@ M5_CAT      = ["Origin_Region", "irrigation_type"]
 M5_MIN_RECORDS_PER_BAND = 30
 
 SURVIVAL_FEATURES = [
-    "season_age", "WG_Current", "CT_Initial", "Moisture", "Mechanical_Damage",
+    "season_age",
+    # WG_Current REMOVED — not available at prediction time
+    "CT_Initial", "Moisture", "Mechanical_Damage",
     "rm", "Stage", "cumulated_dd60", "avg_soil_moisture",
     "irrigation_type", "ct_distance_to_threshold",
+    "season_heat_stress_days", "pp14_cum_dd60",
 ]
 
-FORBIDDEN = ["Variety", "nodes_above_white_flower_1", "nodes_above_white_flower_2",
-             "nodes_above_white_flower_3", "defoliation_1"]
+FORBIDDEN = [
+    "Variety", "WG_Current", "WG_Initial_7Day_Cnt",
+    "nodes_above_white_flower_1", "nodes_above_white_flower_2",
+    "nodes_above_white_flower_3", "defoliation_1",
+]
 
 
 # ── Helpers ────────────────────────────────────────────────────────
@@ -155,14 +169,14 @@ def load_data():
     print("STEP 1: Loading data")
     print("=" * 60)
 
-    lin = pd.read_csv(DATA_PATH / "vw_cotton_lineage_and_quality_june_fg_all_cols.csv",
-                      low_memory=False)
+    lin  = pd.read_csv(DATA_PATH / "vw_cotton_lineage_and_quality_june_fg_all_cols.csv",
+                       low_memory=False)
     qlty = pd.read_csv(DATA_PATH / "vw_cotton_qlty_rslt_all_cols.csv", low_memory=False)
-    wm   = pd.read_csv(DATA_PATH / "2026_cotton_with_weather.csv",     low_memory=False)
+    wm   = pd.read_excel(DATA_PATH / "cotton_weather_features.xlsx")
 
     print(f"  lineage:        {lin.shape[0]:>7,} rows  {lin.shape[1]:>4} cols")
     print(f"  quality_results:{qlty.shape[0]:>7,} rows  {qlty.shape[1]:>4} cols")
-    print(f"  2026_weather:   {wm.shape[0]:>7,} rows  {wm.shape[1]:>4} cols")
+    print(f"  weather (xlsx): {wm.shape[0]:>7,} rows  {wm.shape[1]:>4} cols  (pre-aggregated, expect ~1,716)")
     return lin, qlty, wm
 
 
@@ -208,38 +222,29 @@ def apply_data_quality_rules(df):
     return df
 
 
-# ── STEP 3: Weather aggregation ────────────────────────────────────
+# ── STEP 3: Weather (pre-aggregated xlsx — no aggregation needed) ──
 
-def aggregate_weather(wm):
-    print("\nSTEP 3: Aggregating weather to field-season level")
-    agg_map = {}
-    col_map = {
-        "cumulated_dd60":    ("cumulated_dd60",    "max"),
-        "avg_soil_moisture": ("avg_soil_moisture", "mean"),
-        "dd_60":             ("dd_60",             "sum"),
-        "irrigation_type":   ("irrigation_type",   "first"),
-        "maczone":           ("maczone",            "first"),
-        "rm":                ("rm",                "first"),
-    }
-    for k, (col, func) in col_map.items():
-        if col in wm.columns:
-            agg_map[k] = (col, func)
-
+def load_weather(wm):
+    """cotton_weather_features.xlsx is already one row per variety+state+pa_year."""
+    print("\nSTEP 3: Weather data (pre-aggregated — no daily-row processing needed)")
     group_cols = [c for c in ["variety", "state", "pa_year"] if c in wm.columns]
-    if not group_cols or not agg_map:
-        print("  WARNING: weather group/agg cols not found — returning empty")
-        return pd.DataFrame()
-
-    wm_agg = wm.groupby(group_cols, as_index=False).agg(**agg_map)
-    print(f"  Aggregated: {wm_agg.shape[0]:,} field-season rows")
-    return wm_agg
+    if group_cols:
+        print(f"  Join key columns present: {group_cols}")
+    else:
+        print("  WARNING: expected join keys (variety, state, pa_year) not found in weather file")
+    present = [c for c in WEATHER_FEATURES if c in wm.columns]
+    missing = [c for c in WEATHER_FEATURES if c not in wm.columns]
+    print(f"  Weather features present: {len(present)}/{len(WEATHER_FEATURES)}")
+    if missing:
+        print(f"  Missing (will be NaN after join): {missing}")
+    return wm
 
 
 # ── STEP 4: Join lineage + weather ────────────────────────────────
 
-def join_weather(base, wm_agg):
-    print("\nSTEP 4: Joining weather to lineage (variety + state + season)")
-    if wm_agg.empty or "Variety" not in base.columns:
+def join_weather(base, wm):
+    print("\nSTEP 4: Joining weather to lineage (variety + state + pa_year)")
+    if wm.empty or "Variety" not in base.columns:
         print("  WARNING: skipping weather join — extracting rm from variety names")
         enriched = base.copy()
         enriched["rm"] = enriched["Variety"].apply(extract_rm_from_variety)
@@ -247,7 +252,7 @@ def join_weather(base, wm_agg):
         return enriched
 
     enriched = base.merge(
-        wm_agg,
+        wm,
         left_on  = ["Variety", "Origin_Region", "SEASON_YR"],
         right_on = ["variety", "state",          "pa_year"],
         how      = "left",
@@ -256,7 +261,7 @@ def join_weather(base, wm_agg):
     enriched  = enriched.drop(columns=drop_dups)
     log_join_coverage(enriched, "cumulated_dd60", "weather")
 
-    # Fill rm for rows that didn't match the full join (weather data is 2025-only)
+    # Fill rm for rows with no weather match (variety name extraction fallback)
     if "rm" not in enriched.columns:
         enriched["rm"] = np.nan
     missing_rm = enriched["rm"].isna()
@@ -284,12 +289,11 @@ def engineer_features(df):
     df["ct_distance_to_threshold"] = df["CT_Current"] - CT_THRESHOLD
     df["season_age"] = CURRENT_YEAR - df["SEASON_YR"]
 
-    if "cumulated_dd60" in df.columns:
-        df["pp_day5_cum_dd60"]          = df["cumulated_dd60"] * 0.015
-        df["pp_day10_cum_dd60"]         = df["cumulated_dd60"] * 0.03
-        df["pp_day5_avg_soilmoisture"]  = df.get("avg_soil_moisture", pd.Series(np.nan, index=df.index))
-        df["pp_day10_avg_soilmoisture"] = df.get("avg_soil_moisture", pd.Series(np.nan, index=df.index))
-        df["cumulated_soil_moisture"]   = df.get("avg_soil_moisture", pd.Series(np.nan, index=df.index))
+    # cumulated_soil_moisture: full-season aggregate proxy when not already in weather file
+    if "cumulated_soil_moisture" not in df.columns:
+        df["cumulated_soil_moisture"] = df.get("avg_soil_moisture", pd.Series(np.nan, index=df.index))
+
+    # pp14_cum_dd60 and all new weather window features come pre-engineered from xlsx — no computation needed
 
     print(f"  rm_band distribution: {df['rm_band'].value_counts().to_dict()}")
     return df
@@ -313,7 +317,7 @@ def temporal_split(df):
 
 def train_m1(train, val, test):
     print("\n" + "=" * 60)
-    print("M1 — Binary Degradation Classifier (XGBoost)")
+    print("LotGuard — Risk Scorer (XGBoost)")
     print("=" * 60)
 
     assert_clean_features(M1_FEATURES, "M1")
@@ -366,7 +370,7 @@ def train_m1(train, val, test):
 
 def train_m2(train, val, test):
     print("\n" + "=" * 60)
-    print("M2 — CT Score Regressor (LightGBM)")
+    print("QualityScope — CT Score Predictor (LightGBM)")
     print("=" * 60)
 
     le_m2 = {}
@@ -413,7 +417,7 @@ def train_m2(train, val, test):
 
 def train_m3(train, val, test):
     print("\n" + "=" * 60)
-    print("M3 — 3-Class Quality Classifier (XGBoost + SHAP)")
+    print("GradeView — Quality Grader (XGBoost + SHAP)")
     print("=" * 60)
 
     le_m3 = {}
@@ -538,7 +542,7 @@ def train_m5(enriched):
 
 def train_m6(enriched):
     print("\n" + "=" * 60)
-    print("M6 — Survival / Shelf-Life Predictor (Cox PH + Weibull AFT) [PRIMARY]")
+    print("ShelfSight — Shelf-Life Predictor (Cox PH + Weibull AFT) [PRIMARY]")
     print("=" * 60)
 
     surv = enriched[enriched["CT_Current"].notna()].copy()
@@ -621,7 +625,7 @@ def save_artifacts(m1, imp_m1, le_m1,
         print(f"  Saved: {name}.pkl")
 
     metadata = {
-        "version":                "3",
+        "version":                "5",
         "CT_THRESHOLD":           CT_THRESHOLD,
         "RANDOM_STATE":           RANDOM_STATE,
         "CURRENT_YEAR":           CURRENT_YEAR,
@@ -650,11 +654,13 @@ def save_artifacts(m1, imp_m1, le_m1,
         json.dump(metadata, fh, indent=2)
     print("  Saved: model_metadata.json")
 
-    # Compliance checks
+    # Compliance checks (CLAUDE.md v5)
     assert "rm_bands" in metadata
-    assert "Variety" not in str(metadata["M1_FEATURES"])
-    assert "m5_rmband_profiler" in artifacts
-    print("\n  CLAUDE.md v3 compliance checks passed")
+    assert "Variety"             not in str(metadata["M1_FEATURES"])
+    assert "WG_Current"          not in str(metadata["M1_FEATURES"])
+    assert "WG_Initial_7Day_Cnt" not in str(metadata["M1_FEATURES"])
+    assert "m5_rmband_profiler"  in artifacts
+    print("\n  CLAUDE.md v5 compliance checks passed")
     print(f"  Artifacts saved to: {MODEL_PATH}")
 
 
@@ -662,13 +668,13 @@ def save_artifacts(m1, imp_m1, le_m1,
 
 def main():
     print("Cotton Seed Quality Intelligence System — Model Training")
-    print("CLAUDE.md v3 | rm replaces Variety | M6 is primary deliverable")
+    print("CLAUDE.md v5 | rm replaces Variety | ShelfSight is primary deliverable")
     print("=" * 60)
 
     lin, qlty, wm = load_data()
     base          = apply_data_quality_rules(lin)
-    wm_agg        = aggregate_weather(wm)
-    enriched      = join_weather(base, wm_agg)
+    wm_ready      = load_weather(wm)       # already aggregated — no daily-row processing
+    enriched      = join_weather(base, wm_ready)
     enriched      = engineer_features(enriched)
     train, val, test = temporal_split(enriched)
 

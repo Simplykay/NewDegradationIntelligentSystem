@@ -1,4 +1,4 @@
-﻿"""Page 04 — Shelf-Life Predictor (M6 Hero Page)."""
+﻿"""Page 04 — ShelfSight — Shelf-Life Predictor (Primary Deliverable)."""
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import streamlit as st, pandas as pd
@@ -8,12 +8,12 @@ from components.filters import rm_slider
 from components.charts import survival_curve, multi_survival_curves, forest_plot
 from api_client import client
 
-st.set_page_config(page_title="Shelf-Life Predictor", layout="wide")
+st.set_page_config(page_title="ShelfSight — Shelf-Life Predictor", layout="wide")
 inject_css()
 
-st.markdown('<div class="section-header">04 — Shelf-Life Predictor (M6 — Primary Deliverable)</div>',
+st.markdown('<div class="section-header">04 — ShelfSight — Shelf-Life Predictor</div>',
             unsafe_allow_html=True)
-st.markdown("How many seasons until this lot's CT drops below 60%?")
+st.markdown("How many seasons until this lot's CT drops below 60%? &nbsp;·&nbsp; Powered by **LotGuard · QualityScope · GradeView · ShelfSight**")
 
 # ── Inputs ────────────────────────────────────────────────────────
 col_input, col_output = st.columns([1, 2])
@@ -44,7 +44,7 @@ with col_output:
             "cumulated_dd60": dd60, "avg_soil_moisture": sm,
         }
         try:
-            with st.spinner("Running M1 + M2 + M3 + M6..."):
+            with st.spinner("Running LotGuard · QualityScope · GradeView · ShelfSight..."):
                 result = client.predict_single(payload)
         except Exception as e:
             st.error(f"Prediction failed: {e}")
@@ -63,7 +63,7 @@ with col_output:
         if shelf_life:
             shelf_life_box(shelf_life)
         else:
-            st.info("Train M6 (run train_models.py) to get shelf-life prediction.")
+            st.info("Train ShelfSight (run train_models.py) to get shelf-life prediction.")
 
         st.markdown(f"**Recommendation:** {result['recommendation']}")
         st.markdown(f"**rm Band:** {result.get('rm_band', 'Unknown')} | "

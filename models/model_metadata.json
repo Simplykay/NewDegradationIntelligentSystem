@@ -1,5 +1,5 @@
 {
-  "version": "3",
+  "version": "5",
   "CT_THRESHOLD": 60,
   "RANDOM_STATE": 42,
   "CURRENT_YEAR": 2026,
@@ -18,9 +18,7 @@
     2024
   ],
   "CORE_FEATURES": [
-    "WG_Current",
     "CT_Initial",
-    "WG_Initial_7Day_Cnt",
     "Moisture",
     "Mechanical_Damage",
     "Actual_Seed_Per_LB",
@@ -40,23 +38,31 @@
     "avg_soil_moisture",
     "dd_60",
     "irrigation_type",
-    "maczone"
+    "maczone",
+    "total_precipitation",
+    "total_solar_radiation",
+    "season_heat_stress_days",
+    "season_avg_vpd",
+    "pp14_cum_dd60",
+    "pp14_total_precip",
+    "boll_fill_cum_dd60",
+    "boll_fill_total_precip",
+    "boll_fill_heat_stress_days",
+    "pre_harvest30_cum_dd60",
+    "pre_harvest30_total_precip",
+    "post_defol_cumulated_dd60",
+    "post_defol_avg_soilmoisture",
+    "post_defol_total_precip"
   ],
   "ENGINEERED_FEATURES": [
     "season_age",
     "irrigation_is_dryland",
     "ct_distance_to_threshold",
-    "pp_day5_cum_dd60",
-    "pp_day10_cum_dd60",
-    "pp_day5_avg_soilmoisture",
-    "pp_day10_avg_soilmoisture",
     "cumulated_soil_moisture",
     "rm_band"
   ],
   "M1_FEATURES": [
-    "WG_Current",
     "CT_Initial",
-    "WG_Initial_7Day_Cnt",
     "Moisture",
     "Mechanical_Damage",
     "Actual_Seed_Per_LB",
@@ -71,13 +77,22 @@
     "dd_60",
     "irrigation_type",
     "maczone",
-    "season_age",
+    "total_precipitation",
+    "total_solar_radiation",
+    "season_heat_stress_days",
+    "season_avg_vpd",
+    "pp14_cum_dd60",
+    "pp14_total_precip",
+    "boll_fill_cum_dd60",
+    "boll_fill_total_precip",
+    "boll_fill_heat_stress_days",
+    "pre_harvest30_cum_dd60",
+    "pre_harvest30_total_precip",
+    "post_defol_cumulated_dd60",
+    "post_defol_avg_soilmoisture",
+    "post_defol_total_precip",
     "irrigation_is_dryland",
     "ct_distance_to_threshold",
-    "pp_day5_cum_dd60",
-    "pp_day10_cum_dd60",
-    "pp_day5_avg_soilmoisture",
-    "pp_day10_avg_soilmoisture",
     "cumulated_soil_moisture",
     "rm_band"
   ],
@@ -85,7 +100,8 @@
     "Moisture",
     "Mechanical_Damage",
     "Actual_Seed_Per_LB",
-    "rm"
+    "rm",
+    "CT_Initial"
   ],
   "M4_CAT": [
     "Origin_Region"
@@ -110,7 +126,6 @@
   ],
   "SURVIVAL_FEATURES": [
     "season_age",
-    "WG_Current",
     "CT_Initial",
     "Moisture",
     "Mechanical_Damage",
@@ -119,19 +134,21 @@
     "cumulated_dd60",
     "avg_soil_moisture",
     "irrigation_type",
-    "ct_distance_to_threshold"
+    "ct_distance_to_threshold",
+    "season_heat_stress_days",
+    "pp14_cum_dd60"
   ],
   "survival_event_col": "event",
   "survival_duration_col": "duration",
   "survival_time_unit": "growing_seasons",
   "metrics": {
-    "m1_auc": 1.0,
-    "m1_pr_auc": 1.0,
-    "m2_rmse": 0.9153301135753898,
-    "m2_mae": 0.334683239224638,
-    "m2_r2": 0.9981572771467494,
+    "m1_auc": 0.9999973332972303,
+    "m1_pr_auc": 0.9999958245246865,
+    "m2_rmse": 0.8697097652365396,
+    "m2_mae": 0.3489057250037977,
+    "m2_r2": 0.9983363835204262,
     "m3_f1_macro": 1.0,
-    "m4_auc": 0.6730254350736279,
-    "m6_c_index": 0.9413542943665433
+    "m4_auc": 0.6743296716276873,
+    "m6_c_index": 0.9326361402440915
   }
 }

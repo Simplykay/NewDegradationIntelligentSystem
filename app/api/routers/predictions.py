@@ -30,8 +30,8 @@ async def predict_batch_csv(file: UploadFile = File(...)):
     )
 
 
-@router.get("/m1/feature-importance")
-def m1_feature_importance():
+@router.get("/lotguard/feature-importance")
+def lotguard_feature_importance():
     m = load_models()
     model = m.get("m1_binary_classifier")
     if model is None:
@@ -49,8 +49,8 @@ def m1_feature_importance():
         return []
 
 
-@router.get("/m2/feature-importance")
-def m2_feature_importance():
+@router.get("/qualityscope/feature-importance")
+def qualityscope_feature_importance():
     m = load_models()
     model = m.get("m2_ct_regressor")
     if model is None:

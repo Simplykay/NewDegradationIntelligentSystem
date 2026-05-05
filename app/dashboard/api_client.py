@@ -66,8 +66,9 @@ class APIClient:
     # Predictions
     def predict_single(self, payload: dict) -> dict:
         return self._post("/predict/single", json=payload)
-    def m1_feature_importance(self) -> list:  return self._get("/predict/m1/feature-importance")
-    def model_metrics(self) -> dict:          return self._get("/predict/model-metrics")
+    def lotguard_feature_importance(self) -> list:    return self._get("/predict/lotguard/feature-importance")
+    def qualityscope_feature_importance(self) -> list: return self._get("/predict/qualityscope/feature-importance")
+    def model_metrics(self) -> dict:                  return self._get("/predict/model-metrics")
 
     # Survival
     def survival_km_overall(self) -> list:       return self._get("/survival/km-overall")
@@ -162,7 +163,10 @@ class LocalAPIClient:
         result = _predict(lot, lot_id=payload.get("lot_id"))
         return result.model_dump()
 
-    def m1_feature_importance(self) -> list:
+    def lotguard_feature_importance(self) -> list:
+        return []
+
+    def qualityscope_feature_importance(self) -> list:
         return []
 
     def model_metrics(self) -> dict:

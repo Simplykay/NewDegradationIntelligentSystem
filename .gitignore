@@ -30,3 +30,13 @@ Thumbs.db
 dist/
 build/
 *.egg-info/
+
+# Claude Code internal
+.claude/
+
+# Temporary analysis files
+cell25_features.txt
+feature_defs.txt
+notebook_cells.txt
+notebook_structure.txt
+patch_notebook.py

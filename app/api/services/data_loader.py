@@ -10,14 +10,16 @@ CT_THRESHOLD           = settings.CT_THRESHOLD
 CURRENT_YEAR           = settings.CURRENT_YEAR
 CT_INITIAL_RETEST_DAYS = settings.CT_INITIAL_RETEST_DAYS
 
-# rm values are encoded as last-2-digits of 4-digit variety number (e.g. DP1646 → rm=46)
 RM_BANDS = {
-    "Ultra-Early": (0,  20),
-    "Early":       (20, 30),
-    "Mid-Early":   (30, 40),
-    "Mid-Full":    (40, 50),
-    "Full":        (50, 100),
+    "Ultra-Early": (0,   100),
+    "Early":       (100, 110),
+    "Mid-Early":   (110, 120),
+    "Mid-Full":    (120, 130),
+    "Full":        (130, 999),
 }
+
+DRYLAND = ["FurrowSurge", "Flood", "FurrowConventional",
+           "GatedPipePhaucet", "Furrow", "GatedPipeFaucet"]
 
 
 def _extract_rm_from_variety(variety) -> float:
@@ -67,41 +69,24 @@ def _apply_quality_rules(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def _aggregate_weather(wm: pd.DataFrame) -> pd.DataFrame:
-    agg_map = {}
-    if "cumulated_dd60"    in wm.columns: agg_map["cumulated_dd60"]    = ("cumulated_dd60",    "max")
-    if "avg_soil_moisture" in wm.columns: agg_map["avg_soil_moisture"] = ("avg_soil_moisture", "mean")
-    if "dd_60"             in wm.columns: agg_map["dd_60"]             = ("dd_60",             "sum")
-    if "irrigation_type"   in wm.columns: agg_map["irrigation_type"]   = ("irrigation_type",   "first")
-    if "maczone"           in wm.columns: agg_map["maczone"]           = ("maczone",            "first")
-    if "rm"                in wm.columns: agg_map["rm"]                = ("rm",                "first")
-
-    group_cols = [c for c in ["variety", "state", "pa_year"] if c in wm.columns]
-    if not group_cols or not agg_map:
-        return pd.DataFrame()
-    return wm.groupby(group_cols, as_index=False).agg(**agg_map)
-
-
 def _engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     df["rm_band"] = df["rm"].apply(get_rm_band)
 
-    dryland = ["FurrowSurge", "Flood", "FurrowConventional",
-               "GatedPipePhaucet", "Furrow", "GatedPipeFaucet"]
     if "irrigation_type" in df.columns:
-        df["irrigation_is_dryland"] = df["irrigation_type"].isin(dryland).astype(int)
+        df["irrigation_is_dryland"] = df["irrigation_type"].isin(DRYLAND).astype(int)
     else:
         df["irrigation_is_dryland"] = np.nan
 
     df["ct_distance_to_threshold"] = df["CT_Current"] - CT_THRESHOLD
     df["season_age"]               = CURRENT_YEAR - df["SEASON_YR"]
 
-    if "cumulated_dd60" in df.columns:
-        df["pp_day5_cum_dd60"]          = df["cumulated_dd60"] * 0.015
-        df["pp_day10_cum_dd60"]         = df["cumulated_dd60"] * 0.03
-        df["pp_day5_avg_soilmoisture"]  = df.get("avg_soil_moisture", pd.Series(np.nan, index=df.index))
-        df["pp_day10_avg_soilmoisture"] = df.get("avg_soil_moisture", pd.Series(np.nan, index=df.index))
-        df["cumulated_soil_moisture"]   = df.get("avg_soil_moisture", pd.Series(np.nan, index=df.index))
+    # cumulated_soil_moisture: full-season aggregate proxy when not already in weather file
+    if "cumulated_soil_moisture" not in df.columns:
+        df["cumulated_soil_moisture"] = df.get(
+            "avg_soil_moisture", pd.Series(np.nan, index=df.index))
+
+    # pp14_cum_dd60 and all new weather window features come pre-engineered from xlsx
     return df
 
 
@@ -109,32 +94,36 @@ def _engineer_features(df: pd.DataFrame) -> pd.DataFrame:
 def get_df() -> pd.DataFrame:
     data_dir = settings.data_dir
 
-    lin  = pd.read_csv(data_dir / "vw_cotton_lineage_and_quality_june_fg_all_cols.csv", low_memory=False)
-    wm   = pd.read_csv(data_dir / "2026_cotton_with_weather.csv", low_memory=False)
+    lin = pd.read_csv(data_dir / "vw_cotton_lineage_and_quality_june_fg_all_cols.csv",
+                      low_memory=False)
+    wm  = pd.read_excel(data_dir / "cotton_weather_features.xlsx")
 
-    base   = _apply_quality_rules(lin)
-    wm_agg = _aggregate_weather(wm)
+    base = _apply_quality_rules(lin)
 
-    if not wm_agg.empty and "Variety" in base.columns:
+    if not wm.empty and "Variety" in base.columns:
         enriched = base.merge(
-            wm_agg,
+            wm,
             left_on  = ["Variety", "Origin_Region", "SEASON_YR"],
             right_on = ["variety", "state",          "pa_year"],
             how      = "left",
         )
-        enriched = enriched.drop(columns=[c for c in ["variety", "state", "pa_year"]
-                                           if c in enriched.columns], errors="ignore")
+        enriched = enriched.drop(
+            columns=[c for c in ["variety", "state", "pa_year"] if c in enriched.columns],
+            errors="ignore",
+        )
     else:
         enriched = base.copy()
 
-    # Fill rm from variety name for rows that didn't match the weather join
+    # Fill rm from variety name for rows with no weather match
     if "rm" not in enriched.columns:
         enriched["rm"] = np.nan
     missing_rm = enriched["rm"].isna()
-    enriched.loc[missing_rm, "rm"] = enriched.loc[missing_rm, "Variety"].apply(_extract_rm_from_variety)
+    enriched.loc[missing_rm, "rm"] = (
+        enriched.loc[missing_rm, "Variety"].apply(_extract_rm_from_variety)
+    )
 
     return _engineer_features(enriched)
 
 
 def get_weather_df() -> pd.DataFrame:
-    return pd.read_csv(settings.data_dir / "2026_cotton_with_weather.csv", low_memory=False)
+    return pd.read_excel(settings.data_dir / "cotton_weather_features.xlsx")

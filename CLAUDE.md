@@ -4,14 +4,19 @@
 > **Read fully before writing any code.** This single file replaces the previous
 > three (CLAUDE_v2, CLAUDE_DASHBOARD_v2, CLAUDE_DEPLOYMENT_v2).
 
-> **PROJECT STATE — VERSION 3 (April 2026):**
-> - Active sources: `lineage` + `2026_cotton_with_weather` only
-> - All s3 files (cottons3, cottonCSs3, cottonCS2s3, weatherCSs3, weathers3) ignored entirely
+> **PROJECT STATE — VERSION 5 (May 2026):**
+> - **Active sources: `lineage` + `cotton_weather_features.xlsx` ONLY**
+> - `cotton_weather_features.xlsx` — pre-engineered aggregated weather table. 1,716 rows, 2019–2025, all 6 states. One row per `variety + state + pa_year`. **Replaces all previous weather files entirely** (`2026_cotton_with_weather`, `cottons3_2025`, `weathers3_2025` all dropped).
+> - All s3 files and old weather files ignored entirely.
+> - **`WG_Current` and `WG_Initial_7Day_Cnt` REMOVED from ALL models** — these test results are not available at prediction time.
 > - `Variety` removed from all models — replaced by `rm` (Relative Maturity)
 > - `NAWF` features removed entirely
 > - `CT_Initial` validity rule: null if retest within 14 days
+> - `pp14_cum_dd60` (pre-engineered in weather file) replaces planned `pp_day5/10` features
+> - 12 new weather features now available: solar radiation, VPD, heat stress days, boll fill windows, pre-harvest and post-defoliation windows
 > - M5 named: rm-Band GDD Profiler
 > - M6 (Survival / Shelf-Life Predictor) is the primary business deliverable
+> - Dashboard must be a standalone Streamlit app — not notebook-dependent
 
 ---
 
@@ -57,10 +62,16 @@ Degradation Prediction Intelligent System/
 ├── CLAUDE.md                                ← This file
 ├── Data/
 │   └── raw/
-│       ├── vw_cotton_lineage_and_quality_june_fg_all_cols.csv  ← PRIMARY
-│       ├── vw_cotton_qlty_rslt_all_cols.csv                    ← SUPPLEMENT
-│       └── 2026_cotton_with_weather.csv                         ← WEATHER
-│       # s3 files NOT used in this project
+│       ├── vw_cotton_lineage_and_quality_june_fg_all_cols.csv  ← PRIMARY (70,570 rows)
+│       ├── vw_cotton_qlty_rslt_all_cols.csv                    ← SUPPLEMENT (88,290 rows)
+│       └── cotton_weather_features.xlsx                         ← WEATHER (1,716 rows, 2019–2025)
+│                                                                   Pre-engineered. One row per variety+state+pa_year.
+│                                                                   Replaces ALL previous weather files.
+│       # ALL other files dropped entirely:
+│       #   2026_cotton_with_weather.csv  — replaced by cotton_weather_features.xlsx
+│       #   cottons3_2025.csv             — no longer needed
+│       #   weathers3_2025.csv            — no longer needed
+│       #   cottonCSs3_2025.csv, cottonCS2s3_2025.csv, weatherCSs3_2025.csv — features absent
 ├── models/
 │   ├── m1_binary_classifier.pkl
 │   ├── m2_ct_regressor.pkl
@@ -119,9 +130,9 @@ HOLDOUT       = [2025]                      # ~944    — never used in tuning
 ### Core Features — lineage (ACTIVE)
 ```python
 CORE_FEATURES = [
-    'WG_Current',           # 85.3% coverage
+    # WG_Current REMOVED — not available at prediction time (test not yet run)
+    # WG_Initial_7Day_Cnt REMOVED — same reason
     'CT_Initial',           # 37.2% — validity rule applied first
-    'WG_Initial_7Day_Cnt',  # 36.4%
     'Moisture',             # 87.3%
     'Mechanical_Damage',    # 85.2%
     'Actual_Seed_Per_LB',   # 86.0%
@@ -135,30 +146,60 @@ CORE_FEATURES = [
 CAT_FEATURES = ['Origin_Region', 'Grower_Region']
 ```
 
-### Weather Features — 2026_cotton_with_weather (ACTIVE)
+### Weather Features — cotton_weather_features.xlsx (ACTIVE — pre-engineered)
 ```python
+# All features below come pre-aggregated. Join key: variety + state + pa_year.
+# No daily-row processing required — file already has one row per field-season.
+
 WEATHER_FEATURES = [
-    'cumulated_dd60',     # primary thermal stress signal
-    'avg_soil_moisture',  # drought proxy
-    'dd_60',              # daily DD60 increment
-    'irrigation_type',    # 11 system types
-    'maczone',            # management zone 1-8
+    # ── Core thermal / moisture ──────────────────────────────────────────────
+    'cumulated_dd60',            # seasonal cumulative DD60 — PRIMARY thermal signal
+    'avg_soil_moisture',         # mean seasonal soil moisture — drought proxy
+    'dd_60',                     # total DD60 for season (same as cumulated at season end)
+    'irrigation_type',           # 11 system types — water stress proxy
+    'maczone',                   # management zone 1-8
+
+    # ── New: full-season environmental signals ───────────────────────────────
+    'total_precipitation',       # seasonal total precip (89 nulls — use with care)
+    'total_solar_radiation',     # seasonal solar radiation — full coverage
+    'season_heat_stress_days',   # days above heat stress threshold — full coverage
+    'season_avg_vpd',            # vapour pressure deficit mean (~25% null — supplementary)
+
+    # ── New: post-planting window (14 days) ──────────────────────────────────
+    'pp14_cum_dd60',             # replaces pp_day5/10 — cumulative DD60 days 0-14
+    'pp14_total_precip',         # precipitation in first 14 days post-planting
+
+    # ── New: boll fill period ────────────────────────────────────────────────
+    'boll_fill_cum_dd60',        # heat accumulation during boll fill
+    'boll_fill_total_precip',    # precipitation during boll fill
+    'boll_fill_heat_stress_days',# heat stress days during boll fill
+
+    # ── New: pre-harvest 30 days ─────────────────────────────────────────────
+    'pre_harvest30_cum_dd60',    # heat accumulation in 30 days before harvest
+    'pre_harvest30_total_precip',# precipitation in 30 days before harvest
+
+    # ── New: post-defoliation period ─────────────────────────────────────────
+    'post_defol_cumulated_dd60', # heat accumulation post-defoliation (32 nulls)
+    'post_defol_avg_soilmoisture',# soil moisture post-defoliation (32 nulls)
+    'post_defol_total_precip',   # precipitation post-defoliation (121 nulls)
 ]
+# NOTE: season_avg_vpd (~25% null) and post_defol features (~7% null) are supplementary.
+# total_precipitation (89 nulls) — impute median or drop depending on coverage after join.
 ```
 
 ### Engineered Features (computed in pipeline Step 4)
 ```python
 ENGINEERED_FEATURES = [
     'season_age',                # CURRENT_YEAR - SEASON_YR
-    'irrigation_is_dryland',     # 1 = gravity/surface, 0 = pressurised
-    'ct_distance_to_threshold',  # CT_Current - 60 (survival signal)
-    'pp_day5_cum_dd60',          # DD60 days 0-5 post-planting
-    'pp_day10_cum_dd60',         # DD60 days 0-10 post-planting
-    'pp_day5_avg_soilmoisture',
-    'pp_day10_avg_soilmoisture',
-    'cumulated_soil_moisture',   # full-season soil moisture sum
+    'irrigation_is_dryland',     # 1 = gravity/surface (FurrowSurge, Flood), 0 = pressurised
+    'ct_distance_to_threshold',  # CT_Current - 60 (survival signal; negative = already degraded)
+    'cumulated_soil_moisture',   # full-season soil moisture sum (if not already in weather file)
     'rm_band',                   # categorical from rm value
+    # NOTE: pp14_cum_dd60 and pp14_total_precip come PRE-ENGINEERED from cotton_weather_features.xlsx
+    # pp_day5/10 features are DROPPED — replaced by pp14_cum_dd60
+    # WG-derived features (vigor gap, WG_current proxy) DROPPED — WG not available at prediction time
 ]
+```
 ```
 
 ### rm Band Definitions (used in M5)
@@ -189,10 +230,12 @@ def get_rm_band(rm):
 
 ```python
 # M1, M2, M3 share the same feature scope
+# WG_Current and WG_Initial_7Day_Cnt REMOVED — not available at prediction time
 M1_FEATURES = CORE_FEATURES + WEATHER_FEATURES + ENGINEERED_FEATURES
 
 # M4 — intake only, no joins required
-M4_FEATURES = ['Moisture', 'Mechanical_Damage', 'Actual_Seed_Per_LB', 'rm']
+# WG not available at intake — CT_Initial used as early quality signal instead
+M4_FEATURES = ['Moisture', 'Mechanical_Damage', 'Actual_Seed_Per_LB', 'rm', 'CT_Initial']
 M4_CAT      = ['Origin_Region']
 M4_THRESHOLD = 0.40   # lower than default — maximise recall on degraded
 
@@ -206,9 +249,11 @@ M5_MIN_RECORDS_PER_BAND = 30
 SURVIVAL_FEATURES = [
     'season_age',                # duration
     # event derived from CT_Current < 60
-    'WG_Current', 'CT_Initial', 'Moisture', 'Mechanical_Damage',
+    # WG_Current REMOVED — not available at prediction time
+    'CT_Initial', 'Moisture', 'Mechanical_Damage',
     'rm', 'Stage', 'cumulated_dd60', 'avg_soil_moisture',
     'irrigation_type', 'ct_distance_to_threshold',
+    'season_heat_stress_days', 'pp14_cum_dd60',   # new weather features
 ]
 # Encode Origin_Region as dummies drop_first=True
 ```
@@ -261,17 +306,18 @@ def apply_data_quality_rules(df):
 STEP 1  Load lineage anchor. Apply data quality rules. Create targets.
         Supplement with quality_results on INSPCT_LOT_NBR if needed.
 
-STEP 2  Aggregate 2026_cotton_with_weather from daily rows to field-season:
-        GROUP BY pa_feature_id → max(cumulated_dd60), mean(avg_soil_moisture),
-                                  sum(dd_60), first(irrigation_type, maczone,
-                                  planting_date, defoliation_date, harvest_date)
+STEP 2  Load cotton_weather_features.xlsx (already aggregated — 1 row per
+        variety + state + pa_year). No daily-row processing needed.
+        Log row count at runtime: expect ~1,716 records, years 2019–2025.
 
-STEP 3  Join lineage → weather aggregate.
-        Composite key: variety + state + pa_year (GUID format mismatch
-        prevents direct pa_feature_id join). Log match rate at runtime.
+STEP 3  Join lineage → weather features.
+        Join key: variety + state + pa_year (exact match).
+        Log match rate at runtime.
 
-STEP 4  Feature engineering: compute all ENGINEERED_FEATURES.
-        Assign rm_band from rm value.
+STEP 4  Feature engineering: compute ENGINEERED_FEATURES.
+        ct_distance_to_threshold, irrigation_is_dryland, season_age, rm_band.
+        pp14_cum_dd60 and all other weather windows come pre-engineered from Step 2.
+        Apply CT_Initial validity rule (14-day retest rule).
 
 STEP 5  Temporal split on SEASON_YR.
 ```
@@ -805,14 +851,28 @@ GatedPipePhaucet | Dryland | Furrow | Sprinkler
 ```python
 FORBIDDEN_FEATURES = [
     'Variety',                    # use rm
+    'WG_Current',                 # NOT available at prediction time — NEVER use as feature
+    'WG_Initial_7Day_Cnt',        # NOT available at prediction time — NEVER use as feature
     'nodes_above_white_flower_1',
     'nodes_above_white_flower_2',
     'nodes_above_white_flower_3',
     'defoliation_1',
 ]
+
+# All weather files replaced by cotton_weather_features.xlsx
 FORBIDDEN_FILES = [
-    'cottons3_2025.csv', 'cottonCSs3_2025.csv', 'cottonCS2s3_2025.csv',
-    'weatherCSs3_2025.csv', 'weathers3_2025.csv',
+    '2026_cotton_with_weather.csv',   # replaced by cotton_weather_features.xlsx
+    'cottons3_2025.csv',              # no longer needed
+    'weathers3_2025.csv',             # no longer needed
+    'cottonCSs3_2025.csv',
+    'cottonCS2s3_2025.csv',
+    'weatherCSs3_2025.csv',
+]
+
+ACTIVE_DATA_FILES = [
+    'vw_cotton_lineage_and_quality_june_fg_all_cols.csv',
+    'vw_cotton_qlty_rslt_all_cols.csv',
+    'cotton_weather_features.xlsx',
 ]
 
 def assert_clean_features(feature_list, model_name):
@@ -822,9 +882,11 @@ def assert_clean_features(feature_list, model_name):
 
 **Never:**
 - Use `Variety` as a model feature (keep in dataframe for reference only).
+- Use `WG_Current` or `WG_Initial_7Day_Cnt` as model features — these lab test results are not available until all testing is complete, making them unusable for real-time prediction.
 - Use `NAWF` features anywhere.
 - Use `CT_Initial` without first running the 14-day validity rule.
-- Load any s3 file in the pipeline.
+- Load any file other than the 3 active data files (lineage, quality_results, cotton_weather_features.xlsx).
+- Attempt to process raw daily weather rows — `cotton_weather_features.xlsx` is already aggregated.
 - Randomise train/test splits — always temporal on `SEASON_YR`.
 - Train across `Stage` values without Stage as stratification variable.
 - Impute `CT_Current` — it is the target; exclude rows without it.
@@ -833,6 +895,7 @@ def assert_clean_features(feature_list, model_name):
 - Hardcode data paths — use `settings.BASE_DATA_PATH`.
 - Cache prediction endpoints with `st.cache_data`.
 - Add a Variety dropdown to any sidebar — use rm slider/radio instead.
+- Build or demo predictions inside a notebook — the Streamlit app is the deliverable.
 
 ---
 
@@ -841,14 +904,15 @@ def assert_clean_features(feature_list, model_name):
 When starting a new Claude Code session:
 
 1. Read this CLAUDE.md fully before taking any action.
-2. Confirm `Data/raw/` contains exactly 3 files: lineage, quality_results, 2026_weather.
-3. Confirm no s3 files referenced anywhere in open code.
+2. Confirm `Data/raw/` contains exactly **3 files**: lineage CSV, quality_results CSV, cotton_weather_features.xlsx.
+3. Confirm NO other weather or s3 files are referenced anywhere in open code.
 4. Confirm `models/` directory exists.
-5. Run `assert_clean_features()` before every `model.fit()` call.
+5. Run `assert_clean_features()` before every `model.fit()` — verify WG_Current and WG_Initial_7Day_Cnt are absent.
 6. Build M6 always — even when iterating on other models.
 7. Ask the user which task before opening any file.
 8. Never modify raw data files — copy to a working variable.
+9. All predictions and dashboards must live in the Streamlit app — not in notebooks.
 
 ---
 
-*Version 3 — April 2026 | Single source of truth for modeling, dashboard, and deployment*
+*Version 5 — May 2026 | Single source of truth for modeling, dashboard, and deployment*

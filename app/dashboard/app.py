@@ -28,7 +28,7 @@ with st.sidebar:
         <div style="font-family:'Space Mono',monospace;color:{COLORS['accent_green']};
                     font-size:1.1rem;font-weight:700">COTTON SEED QI</div>
         <div style="color:{COLORS['text_secondary']};font-size:0.75rem;margin-top:2px">
-            v3.0
+            v5.0
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -46,7 +46,7 @@ with st.sidebar:
     st.markdown(f"""
     <div style="color:{COLORS['text_secondary']};font-size:0.75rem">
         <b>Navigation:</b> Use the pages menu above.<br><br>
-        <b>Page 04</b> — Shelf-Life Predictor is the primary business deliverable (M6).
+        <b>Page 04 — ShelfSight</b> is the primary business deliverable.
     </div>
     """, unsafe_allow_html=True)
 
@@ -58,7 +58,8 @@ st.markdown(f"""
         Cotton Seed Quality<br>Intelligence System
     </div>
     <div style="color:{COLORS['text_secondary']};font-size:1.1rem;margin-top:12px;max-width:600px">
-        Six AI models answering the question: <em>how long before this lot degrades below 60% CT?</em>
+        Four AI models — <em>LotGuard · QualityScope · GradeView · ShelfSight</em> — answering:
+        how long before this lot degrades below 60% CT?
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -66,15 +67,15 @@ st.markdown(f"""
 col1, col2, col3 = st.columns(3)
 with col1:
     st.markdown(f"""
-    <div style="background:{COLORS['bg_card']};border:1px solid {COLORS['border_subtle']};
-                border-radius:10px;padding:18px">
+    <div style="background:{COLORS['bg_card']};border:2px solid {COLORS['accent_blue']};
+                border-radius:10px;padding:18px;box-shadow:0 0 18px {COLORS['accent_blue']}30">
         <div style="color:{COLORS['accent_green']};font-size:0.8rem;text-transform:uppercase;
                     letter-spacing:0.1em">Primary Deliverable</div>
         <div style="font-family:'Space Mono',monospace;font-size:1.3rem;margin-top:6px">
-            Page 04 — Shelf-Life Predictor
+            Page 04 — ShelfSight
         </div>
         <div style="color:{COLORS['text_secondary']};font-size:0.85rem;margin-top:6px">
-            Enter lot characteristics, get seasons-until-degradation prediction with survival curve.
+            Enter lot characteristics → seasons-until-degradation with survival curve.
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -85,7 +86,7 @@ with col2:
         <div style="color:{COLORS['accent_amber']};font-size:0.8rem;text-transform:uppercase;
                     letter-spacing:0.1em">Explore</div>
         <div style="font-family:'Space Mono',monospace;font-size:1.3rem;margin-top:6px">
-            Pages 01-03 — Portfolio & Field Intel
+            Pages 01–03 — Portfolio & Field Intel
         </div>
         <div style="color:{COLORS['text_secondary']};font-size:0.85rem;margin-top:6px">
             Regional risk, quality distribution, weather-driven field intelligence.
@@ -99,10 +100,10 @@ with col3:
         <div style="color:{COLORS['accent_teal']};font-size:0.8rem;text-transform:uppercase;
                     letter-spacing:0.1em">Operations</div>
         <div style="font-family:'Space Mono',monospace;font-size:1.3rem;margin-top:6px">
-            Pages 05-08 — Stage, rm, Batch
+            Pages 05–08 — Stage, Bands, Batch
         </div>
         <div style="color:{COLORS['text_secondary']};font-size:0.85rem;margin-top:6px">
-            Pipeline stage analysis, rm-band profiling, batch scoring with CSV download.
+            Pipeline stage analysis, maturity-band profiling, batch scoring with CSV download.
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -112,6 +113,6 @@ st.markdown(f"""
 <div style="color:{COLORS['text_secondary']};font-size:0.8rem">
     Navigate using the <b>pages menu</b> in the sidebar.
     Start with <b>01 Portfolio Overview</b> for a high-level view, or jump to
-    <b>04 Shelf-Life Predictor</b> to score a specific lot.
+    <b>04 ShelfSight</b> to score a specific lot.
 </div>
 """, unsafe_allow_html=True)

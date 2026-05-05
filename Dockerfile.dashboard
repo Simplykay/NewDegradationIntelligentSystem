@@ -1,0 +1,14 @@
+FROM python:3.10-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY app/dashboard/ ./app/dashboard/
+EXPOSE 8501
+CMD ["streamlit", "run", "app/dashboard/app.py", \
+     "--server.port=8501", "--server.address=0.0.0.0", \
+     "--server.headless=true", \
+     "--theme.base=dark", \
+     "--theme.primaryColor=#22C55E", \
+     "--theme.backgroundColor=#0A0F0D", \
+     "--theme.secondaryBackgroundColor=#111A14", \
+     "--theme.textColor=#F0FDF4"]

@@ -11,31 +11,48 @@ from ..schemas import LotInput, SinglePredictionResponse
 CT_THRESHOLD = settings.CT_THRESHOLD
 CURRENT_YEAR = settings.CURRENT_YEAR
 
-# rm values encoded as 2-digit suffix of variety number (e.g. DP1646 → rm=46)
 RM_BANDS = {
-    "Ultra-Early": (0,  20),
-    "Early":       (20, 30),
-    "Mid-Early":   (30, 40),
-    "Mid-Full":    (40, 50),
-    "Full":        (50, 100),
+    "Ultra-Early": (0,   100),
+    "Early":       (100, 110),
+    "Mid-Early":   (110, 120),
+    "Mid-Full":    (120, 130),
+    "Full":        (130, 999),
 }
 DRYLAND = ["FurrowSurge", "Flood", "FurrowConventional",
            "GatedPipePhaucet", "Furrow", "GatedPipeFaucet"]
 
+# M1/M2/M3 share this feature scope.
+# WG_Current and WG_Initial_7Day_Cnt REMOVED — not available at prediction time.
 M1_FEATURES = [
-    "WG_Current", "CT_Initial", "WG_Initial_7Day_Cnt", "Moisture",
-    "Mechanical_Damage", "Actual_Seed_Per_LB", "rm",
+    # Core
+    "CT_Initial", "Moisture", "Mechanical_Damage", "Actual_Seed_Per_LB", "rm",
     "Stage", "season_age",
     "RR_Lateral_Strip_PCT", "Cry1Ac_Bollgard_Strip_Test", "Cry2Ab_Bollgard_Strip_Test",
+    # Weather — core thermal / moisture
     "cumulated_dd60", "avg_soil_moisture", "dd_60", "irrigation_type", "maczone",
-    "season_age", "irrigation_is_dryland", "ct_distance_to_threshold",
-    "pp_day5_cum_dd60", "pp_day10_cum_dd60",
-    "pp_day5_avg_soilmoisture", "pp_day10_avg_soilmoisture",
-    "cumulated_soil_moisture", "rm_band",
+    # Weather — full-season signals
+    "total_precipitation", "total_solar_radiation", "season_heat_stress_days", "season_avg_vpd",
+    # Weather — pp14 window (pre-engineered in xlsx)
+    "pp14_cum_dd60", "pp14_total_precip",
+    # Weather — boll fill
+    "boll_fill_cum_dd60", "boll_fill_total_precip", "boll_fill_heat_stress_days",
+    # Weather — pre-harvest 30 days
+    "pre_harvest30_cum_dd60", "pre_harvest30_total_precip",
+    # Weather — post-defoliation
+    "post_defol_cumulated_dd60", "post_defol_avg_soilmoisture", "post_defol_total_precip",
+    # Engineered
+    "irrigation_is_dryland", "ct_distance_to_threshold", "cumulated_soil_moisture", "rm_band",
 ]
-CAT_FEATURES = ["Origin_Region", "Grower_Region"]
+CAT_FEATURES   = ["Origin_Region", "Grower_Region"]
 QUALITY_LABELS = {0: "Degraded", 1: "At Risk", 2: "High Quality"}
 RISK_LEVELS    = {0: "High", 1: "Medium", 2: "Low"}
+MODEL_NAMES    = {
+    "m1_binary_classifier": "LotGuard",
+    "m2_ct_regressor":      "QualityScope",
+    "m3_3class_classifier": "GradeView",
+    "m6_aft_weibull":       "ShelfSight",
+    "m6_cox_ph":            "ShelfSight (Cox PH)",
+}
 
 
 def _load_pkl(name: str):
@@ -83,15 +100,14 @@ def get_rm_band(rm) -> str:
 
 
 def _lot_to_row(lot: LotInput) -> pd.DataFrame:
-    season_age = CURRENT_YEAR - lot.season_yr
+    season_age  = CURRENT_YEAR - lot.season_yr
     irr_dryland = int(lot.irrigation_type in DRYLAND) if lot.irrigation_type else np.nan
-    dd60 = lot.cumulated_dd60 or np.nan
-    sm   = lot.avg_soil_moisture or np.nan
+    dd60        = lot.cumulated_dd60 or np.nan
+    sm          = lot.avg_soil_moisture or np.nan
 
     row = {
-        "WG_Current":              lot.wg_current,
+        # Core features
         "CT_Initial":              lot.ct_initial,
-        "WG_Initial_7Day_Cnt":     np.nan,
         "Moisture":                lot.moisture,
         "Mechanical_Damage":       lot.mechanical_damage,
         "Actual_Seed_Per_LB":      lot.actual_seed_per_lb,
@@ -101,21 +117,39 @@ def _lot_to_row(lot: LotInput) -> pd.DataFrame:
         "RR_Lateral_Strip_PCT":    np.nan,
         "Cry1Ac_Bollgard_Strip_Test": np.nan,
         "Cry2Ab_Bollgard_Strip_Test": np.nan,
+        # Categorical
         "Origin_Region":           lot.origin_region,
         "Grower_Region":           np.nan,
+        # Weather — core thermal / moisture (user may supply)
         "cumulated_dd60":          dd60,
         "avg_soil_moisture":       sm,
         "dd_60":                   np.nan,
         "irrigation_type":         lot.irrigation_type,
         "maczone":                 lot.maczone,
-        "irrigation_is_dryland":   irr_dryland,
+        # Weather — full-season signals (from xlsx join; NaN for live predictions)
+        "total_precipitation":     np.nan,
+        "total_solar_radiation":   np.nan,
+        "season_heat_stress_days": np.nan,
+        "season_avg_vpd":          np.nan,
+        # Weather — pp14 window (pre-engineered from xlsx)
+        "pp14_cum_dd60":           np.nan,
+        "pp14_total_precip":       np.nan,
+        # Weather — boll fill
+        "boll_fill_cum_dd60":      np.nan,
+        "boll_fill_total_precip":  np.nan,
+        "boll_fill_heat_stress_days": np.nan,
+        # Weather — pre-harvest 30 days
+        "pre_harvest30_cum_dd60":  np.nan,
+        "pre_harvest30_total_precip": np.nan,
+        # Weather — post-defoliation
+        "post_defol_cumulated_dd60":   np.nan,
+        "post_defol_avg_soilmoisture": np.nan,
+        "post_defol_total_precip":     np.nan,
+        # Engineered
+        "irrigation_is_dryland":    irr_dryland,
         "ct_distance_to_threshold": np.nan,
-        "pp_day5_cum_dd60":        dd60 * 0.015 if not np.isnan(dd60) else np.nan,
-        "pp_day10_cum_dd60":       dd60 * 0.03  if not np.isnan(dd60) else np.nan,
-        "pp_day5_avg_soilmoisture":  sm,
-        "pp_day10_avg_soilmoisture": sm,
-        "cumulated_soil_moisture":   sm,
-        "rm_band":                 get_rm_band(lot.rm),
+        "cumulated_soil_moisture":  sm,
+        "rm_band":                  get_rm_band(lot.rm),
     }
     return pd.DataFrame([row])
 
@@ -139,11 +173,11 @@ def predict_single(lot: LotInput, lot_id: Optional[str] = None) -> SinglePredict
                 X[col] = -1
         if imputer is None:
             return X
-        # Align columns to exactly what the imputer expects
         if hasattr(imputer, "feature_names_in_"):
             X = X.reindex(columns=imputer.feature_names_in_)
         out = imputer.transform(X)
-        out_cols = list(imputer.get_feature_names_out()) if hasattr(imputer, "get_feature_names_out") else list(X.columns)
+        out_cols = (list(imputer.get_feature_names_out())
+                    if hasattr(imputer, "get_feature_names_out") else list(X.columns))
         return pd.DataFrame(out, columns=out_cols)
 
     # M1 — degradation probability
@@ -177,11 +211,15 @@ def predict_single(lot: LotInput, lot_id: Optional[str] = None) -> SinglePredict
             season_age_val = CURRENT_YEAR - lot.season_yr
             row_dict = {c: np.nan for c in covariates}
             for k, v in {
-                "season_age": season_age_val, "WG_Current": lot.wg_current,
-                "CT_Initial": lot.ct_initial, "Moisture": lot.moisture,
-                "Mechanical_Damage": lot.mechanical_damage, "rm": lot.rm,
-                "Stage": lot.stage, "cumulated_dd60": lot.cumulated_dd60,
+                "season_age":        season_age_val,
+                "CT_Initial":        lot.ct_initial,
+                "Moisture":          lot.moisture,
+                "Mechanical_Damage": lot.mechanical_damage,
+                "rm":                lot.rm,
+                "Stage":             lot.stage,
+                "cumulated_dd60":    lot.cumulated_dd60,
                 "avg_soil_moisture": lot.avg_soil_moisture,
+                # WG_Current REMOVED — not available at prediction time
             }.items():
                 if k in row_dict and v is not None:
                     row_dict[k] = float(v)
@@ -199,10 +237,10 @@ def predict_single(lot: LotInput, lot_id: Optional[str] = None) -> SinglePredict
             for i, col in enumerate(imp_cols):
                 if col in aft_row.columns:
                     aft_row[col] = imp_vals[0, i]
-            aft_row = aft_row.reindex(columns=covariates)
+            aft_row    = aft_row.reindex(columns=covariates)
             shelf_life = float(aft.predict_median(aft_row).iloc[0])
             shelf_life = max(0.0, min(shelf_life, 20.0))
-        except Exception as _e:
+        except Exception:
             import traceback; traceback.print_exc()
             shelf_life = None
 
@@ -248,7 +286,6 @@ def predict_single(lot: LotInput, lot_id: Optional[str] = None) -> SinglePredict
 
 def predict_batch(df: pd.DataFrame) -> pd.DataFrame:
     results = []
-    m = load_models()
     for _, row in df.iterrows():
         lot = LotInput(
             rm=row.get("rm"),

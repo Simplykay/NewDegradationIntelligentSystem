@@ -132,9 +132,13 @@ def physical_quality() -> dict:
 
 def correlation_matrix() -> dict:
     df = get_df()
-    num_cols = [c for c in ["CT_Current", "WG_Current", "Moisture", "Mechanical_Damage",
-                             "rm", "season_age", "cumulated_dd60", "avg_soil_moisture"]
-                if c in df.columns]
+    candidate_cols = [
+        "CT_Current", "WG_Current", "Moisture", "Mechanical_Damage",
+        "rm", "season_age", "cumulated_dd60", "avg_soil_moisture",
+        "season_heat_stress_days", "pp14_cum_dd60", "total_precipitation",
+        "total_solar_radiation", "boll_fill_cum_dd60",
+    ]
+    num_cols = [c for c in candidate_cols if c in df.columns]
     corr = df[num_cols].corr().round(3)
     matrix = [[None if (v != v) else v for v in row] for row in corr.values.tolist()]
     return {"columns": corr.columns.tolist(), "matrix": matrix}
@@ -144,12 +148,25 @@ def weather_summary() -> dict:
     try:
         wm = get_weather_df()
         result = {}
-        for col in ["cumulated_dd60", "avg_soil_moisture", "dd_60"]:
+        summary_cols = [
+            "cumulated_dd60", "avg_soil_moisture", "dd_60",
+            "total_precipitation", "total_solar_radiation",
+            "season_heat_stress_days", "season_avg_vpd",
+            "pp14_cum_dd60", "pp14_total_precip",
+            "boll_fill_cum_dd60", "boll_fill_total_precip", "boll_fill_heat_stress_days",
+            "pre_harvest30_cum_dd60", "pre_harvest30_total_precip",
+            "post_defol_cumulated_dd60", "post_defol_avg_soilmoisture", "post_defol_total_precip",
+        ]
+        for col in summary_cols:
             if col in wm.columns:
                 s = wm[col].dropna()
-                result[col] = {"mean": round(float(s.mean()), 3),
-                                "max":  round(float(s.max()),  3),
-                                "min":  round(float(s.min()),  3)}
+                if len(s) > 0:
+                    result[col] = {
+                        "mean":     round(float(s.mean()), 3),
+                        "max":      round(float(s.max()),  3),
+                        "min":      round(float(s.min()),  3),
+                        "null_pct": round(wm[col].isna().mean() * 100, 2),
+                    }
         if "irrigation_type" in wm.columns:
             result["irrigation_breakdown"] = wm["irrigation_type"].value_counts().to_dict()
         return result

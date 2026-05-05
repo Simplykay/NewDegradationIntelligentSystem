@@ -1,0 +1,41 @@
+version: '3.9'
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: cotton_seed_api
+    ports:
+      - "8000:8000"
+    environment:
+      - DATA_PATH=/app/data/raw
+      - MODEL_PATH=/app/models
+      - CT_THRESHOLD=60
+      - CURRENT_YEAR=2026
+      - CT_INITIAL_RETEST_DAYS=14
+    volumes:
+      - ./Data/raw:/app/data/raw:ro
+      - ./models:/app/models:ro
+    restart: unless-stopped
+    networks:
+      - cotton_net
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    container_name: cotton_seed_dashboard
+    ports:
+      - "8501:8501"
+    environment:
+      - API_BASE_URL=http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - cotton_net
+
+networks:
+  cotton_net:
+    driver: bridge
